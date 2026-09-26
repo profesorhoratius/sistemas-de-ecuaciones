@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graficador e Intérprete Matemático - Sistemas 2x2</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#131e32',
+                            900: '#0f172a',
+                            950: '#020617',
+                        },
+                        eq1: '#3b82f6', // Bright Blue
+                        eq2: '#ec4899', // Bright Pink
+                        intersect: '#10b981', // Emerald
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- MathJax CDN for crisp LaTeX rendering -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' },
+            startup: {
+                typeset: false
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+    <style>
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(51, 65, 85, 0.8);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(71, 85, 105, 1);
+        }
+        canvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col overflow-x-hidden">
+
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-4 lg:px-6 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/20 text-white">
+                <i data-lucide="function-square" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg leading-tight bg-gradient-to-r from-blue-400 via-indigo-300 to-pink-400 bg-clip-text text-transparent">
+                    MathLab 2x2
+                </h1>
+                <p class="text-xs text-slate-400 hidden sm:block">Graficador e Intérprete Interactivo de Sistemas de Ecuaciones Lineales</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button id="btn-export-svg" title="Exportar resolución en texto" class="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+                <i data-lucide="share-2" class="w-4 h-4 text-blue-400"></i>
+                <span class="hidden md:inline">Compartir</span>
+            </button>
+            <a href="#tutorial-modal" onclick="toggleModal(true)" class="flex items-center gap-1.5 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 px-3 py-1.5 rounded-lg border border-blue-500/30 transition">
+                <i data-lucide="help-circle" class="w-4 h-4"></i>
+                <span class="hidden md:inline">Guía Pedagógica</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden">
+        
+        <!-- ==================== LEFT SIDEBAR: CONTROLS & PARAMS ==================== -->
+        <aside class="lg:col-span-4 xl:col-span-3 border-r border-slate-800 bg-slate-900/90 overflow-y-auto max-h-[calc(100vh-57px)] flex flex-col divide-y divide-slate-800/80">
+            
+            <div class="p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <i data-lucide="bookmark" class="w-3.5 h-3.5 text-indigo-400"></i>
+                        Casos de Estudio (Presets)
+                    </label>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <button onclick="loadPreset('determinado')" class="p-2 bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/60 rounded-lg text-left transition flex flex-col gap-0.5 group">
+                        <span class="font-medium text-emerald-400 group-hover:text-emerald-300">Solución Única</span>
+                        <span class="text-[10px] text-slate-400">SCD ($x=2, y=3$)</span>
+                    </button>
+                    <button onclick="loadPreset('incompatible')" class="p-2 bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/60 rounded-lg text-left transition flex flex-col gap-0.5 group">
+                        <span class="font-medium text-rose-400 group-hover:text-rose-300">Sin Solución</span>
+                        <span class="text-[10px] text-slate-400">SI (Paralelas)</span>
+                    </button>
+                    <button onclick="loadPreset('indeterminado')" class="p-2 bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/60 rounded-lg text-left transition flex flex-col gap-0.5 group">
+                        <span class="font-medium text-amber-400 group-hover:text-amber-300">Infinitas Sol.</span>
+                        <span class="text-[10px] text-slate-400">SCI (Coincidentes)</span>
+                    </button>
+                    <button onclick="loadPreset('perpendicular')" class="p-2 bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/60 rounded-lg text-left transition flex flex-col gap-0.5 group">
+                        <span class="font-medium text-purple-400 group-hover:text-purple-300">Perpendiculares</span>
+                        <span class="text-[10px] text-slate-400">Ángulo de $90^\circ$</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-4 space-y-4">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <i data-lucide="sliders" class="w-3.5 h-3.5 text-blue-400"></i>
+                        Ecuaciones del Sistema
+                    </label>
+                    <span class="text-[11px] text-slate-500 font-mono">$a x + b y = c$</span>
+                </div>
+
+                <!-- ECUACIÓN 1 CONTROL CARD -->
+                <div class="p-3 bg-slate-950/60 border border-blue-500/30 rounded-xl space-y-3 relative overflow-hidden">
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-eq1"></div>
+                    <div class="flex items-center justify-between text-xs font-medium text-blue-400">
+                        <span class="flex items-center gap-1"><i data-lucide="minus" class="w-4 h-4 stroke-[3]"></i> Ecuación 1 ($L_1$)</span>
+                        <span id="eq1-preview" class="font-mono text-slate-200 text-[11px] bg-slate-800 px-2 py-0.5 rounded">2x + 1y = 7</span>
+                    </div>
+
+                    <!-- Sliders & Inputs A1, B1, C1 -->
+                    <div class="space-y-2 text-xs">
+                        <!-- a1 -->
+                        <div>
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span>Coeficiente $a_1$:</span>
+                                <input type="number" id="num-a1" value="2" step="0.5" class="w-14 bg-slate-800 border border-slate-700 text-right text-slate-100 rounded px-1 text-xs font-mono focus:border-blue-500 focus:outline-none">
+                            </div>
+                            <input type="range" id="range-a1" min="-10" max="10" step="0.5" value="2" class="w-full accent-blue-500 h-1 bg-slate-800 rounded appearance-none cursor-pointer">
+                        </div>
+                        <!-- b1 -->
+                        <div>
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span>Coeficiente $b_1$:</span>
+                                <input type="number" id="num-b1" value="1" step="0.5" class="w-14 bg-slate-800 border border-slate-700 text-right text-slate-100 rounded px-1 text-xs font-mono focus:border-blue-500 focus:outline-none">
+                            </div>
+                            <input type="range" id="range-b1" min="-10" max="10" step="0.5" value="1" class="w-full accent-blue-500 h-1 bg-slate-800 rounded appearance-none cursor-pointer">
+                        </div>
+                        <!-- c1 -->
+                        <div>
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span>Término $c_1$:</span>
+                                <input type="number" id="num-c1" value="7" step="0.5" class="w-14 bg-slate-800 border border-slate-700 text-right text-slate-100 rounded px-1 text-xs font-mono focus:border-blue-500 focus:outline-none">
+                            </div>
+                            <input type="range" id="range-c1" min="-20" max="20" step="0.5" value="7" class="w-full accent-blue-500 h-1 bg-slate-800 rounded appearance-none cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ECUACIÓN 2 CONTROL CARD -->
+                <div class="p-3 bg-slate-950/60 border border-pink-500/30 rounded-xl space-y-3 relative overflow-hidden">
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-eq2"></div>
+                    <div class="flex items-center justify-between text-xs font-medium text-pink-400">
+                        <span class="flex items-center gap-1"><i data-lucide="minus" class="w-4 h-4 stroke-[3]"></i> Ecuación 2 ($L_2$)</span>
+                        <span id="eq2-preview" class="font-mono text-slate-200 text-[11px] bg-slate-800 px-2 py-0.5 rounded">-1x + 2y = 4</span>
+                    </div>
+
+                    <!-- Sliders & Inputs A2, B2, C2 -->
+                    <div class="space-y-2 text-xs">
+                        <!-- a2 -->
+                        <div>
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span>Coeficiente $a_2$:</span>
+                                <input type="number" id="num-a2" value="-1" step="0.5" class="w-14 bg-slate-800 border border-slate-700 text-right text-slate-100 rounded px-1 text-xs font-mono focus:border-pink-500 focus:outline-none">
+                            </div>
+                            <input type="range" id="range-a2" min="-10" max="10" step="0.5" value="-1" class="w-full accent-pink-500 h-1 bg-slate-800 rounded appearance-none cursor-pointer">
+                        </div>
+                        <!-- b2 -->
+                        <div>
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span>Coeficiente $b_2$:</span>
+                                <input type="number" id="num-b2" value="2" step="0.5" class="w-14 bg-slate-800 border border-slate-700 text-right text-slate-100 rounded px-1 text-xs font-mono focus:border-pink-500 focus:outline-none">
+                            </div>
+                            <input type="range" id="range-b2" min="-10" max="10" step="0.5" value="2" class="w-full accent-pink-500 h-1 bg-slate-800 rounded appearance-none cursor-pointer">
+                        </div>
+                        <!-- c2 -->
+                        <div>
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span>Término $c_2$:</span>
+                                <input type="number" id="num-c2" value="4" step="0.5" class="w-14 bg-slate-800 border border-slate-700 text-right text-slate-100 rounded px-1 text-xs font-mono focus:border-pink-500 focus:outline-none">
+                            </div>
+                            <input type="range" id="range-c2" min="-20" max="20" step="0.5" value="4" class="w-full accent-pink-500 h-1 bg-slate-800 rounded appearance-none cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 space-y-2">
+                <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mb-2">
+                    <i data-lucide="eye" class="w-3.5 h-3.5 text-emerald-400"></i>
+                    Capas y Visualización
+                </label>
+
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <label class="flex items-center gap-2 p-2 bg-slate-800/40 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer">
+                        <input type="checkbox" id="chk-grid" checked class="rounded border-slate-700 text-blue-600 focus:ring-0">
+                        <span class="text-slate-300">Cuadrícula</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 bg-slate-800/40 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer">
+                        <input type="checkbox" id="chk-labels" checked class="rounded border-slate-700 text-blue-600 focus:ring-0">
+                        <span class="text-slate-300">Etiquetas / Ejes</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 bg-slate-800/40 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer">
+                        <input type="checkbox" id="chk-intercepts" checked class="rounded border-slate-700 text-blue-600 focus:ring-0">
+                        <span class="text-slate-300">Puntos de Ejes</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 bg-slate-800/40 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer">
+                        <input type="checkbox" id="chk-triangle" class="rounded border-slate-700 text-blue-600 focus:ring-0">
+                        <span class="text-slate-300">Área c/ Ejes</span>
+                    </label>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- ==================== CENTER/RIGHT: CANVAS & ANALYSIS AREA ==================== -->
+        <section class="lg:col-span-8 xl:col-span-9 flex flex-col h-[calc(100vh-57px)] overflow-y-auto bg-slate-950">
+            
+            <!-- TOP HALF: CANVAS GRAPHIC AREA -->
+            <div class="relative flex-1 min-h-[380px] lg:min-h-[450px] bg-slate-950 overflow-hidden border-b border-slate-800 flex flex-col">
+                
+                <!-- Floating Canvas Controls -->
+                <div class="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl p-1 shadow-xl backdrop-blur">
+                    <button id="btn-zoom-in" title="Aumentar Zoom" class="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition">
+                        <i data-lucide="zoom-in" class="w-4 h-4"></i>
+                    </button>
+                    <button id="btn-zoom-out" title="Disminuir Zoom" class="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition">
+                        <i data-lucide="zoom-out" class="w-4 h-4"></i>
+                    </button>
+                    <div class="w-px h-4 bg-slate-700"></div>
+                    <button id="btn-focus-intersect" title="Centrar en Intersección" class="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-emerald-400 transition">
+                        <i data-lucide="crosshair" class="w-4 h-4"></i>
+                    </button>
+                    <button id="btn-reset-view" title="Restablecer Vista Origial" class="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-blue-400 transition">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Floating System Quick Diagnostic Badge -->
+                <div class="absolute top-3 left-3 z-10">
+                    <div id="diagnostic-badge" class="px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-lg backdrop-blur flex items-center gap-2 bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
+                        <span class="relative flex h-2 w-2">
+                          <span id="diagnostic-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span id="diagnostic-dot" class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        <span id="diagnostic-title">Sistema Compatible Determinado</span>
+                    </div>
+                </div>
+
+                <!-- HTML5 Canvas -->
+                <canvas id="math-canvas" class="w-full h-full cursor-grab active:cursor-grabbing block"></canvas>
+
+                <!-- Tooltip floating element -->
+                <div id="canvas-tooltip" class="absolute hidden pointer-events-none z-20 bg-slate-900/95 border border-slate-700 text-slate-100 text-xs px-2.5 py-1.5 rounded-lg shadow-xl backdrop-blur font-mono whitespace-nowrap">
+                    <!-- Dynamic tooltip content -->
+                </div>
+            </div>
+
+            <!-- BOTTOM HALF: MATHEMATICAL ANALYSIS & STEP-BY-STEP RESOLUTION -->
+            <div class="p-4 lg:p-6 space-y-6 bg-slate-900/50">
+                
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <!-- Metric 1: Solution Point -->
+                    <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-1">
+                        <span class="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">Punto de Intersección</span>
+                        <div id="val-solution" class="text-lg font-mono font-bold text-emerald-400">
+                            $(x, y) = (2, 3)$
+                        </div>
+                        <span id="val-solution-exact" class="text-xs text-slate-500 font-mono block">Exacto: $(2, 3)$</span>
+                    </div>
+
+                    <!-- Metric 2: Determinant Delta -->
+                    <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-1">
+                        <span class="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">Determinante ($\Delta$)</span>
+                        <div id="val-det-main" class="text-lg font-mono font-bold text-indigo-400">
+                            $\Delta = 5$
+                        </div>
+                        <span id="val-det-sub" class="text-xs text-slate-500 font-mono block">$\Delta_x = 10, \Delta_y = 15$</span>
+                    </div>
+
+                    <!-- Metric 3: Slopes -->
+                    <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-1">
+                        <span class="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">Pendientes ($m_1, m_2$)</span>
+                        <div id="val-slopes" class="text-sm font-mono text-slate-200">
+                            $m_1 = -2.00$ <br> $m_2 = 0.50$
+                        </div>
+                    </div>
+
+                    <!-- Metric 4: Angle between lines -->
+                    <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-1">
+                        <span class="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">Ángulo entre Rectas</span>
+                        <div id="val-angle" class="text-lg font-mono font-bold text-purple-400">
+                            $\theta = 90.0^\circ$
+                        </div>
+                        <span id="val-angle-type" class="text-xs text-slate-500 block">Rectas Perpendiculares</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                    
+                    <!-- Method Selector Navigation Tabs -->
+                    <div class="border-b border-slate-800 bg-slate-950/60 p-2 flex flex-wrap gap-2">
+                        <button onclick="switchTab('cramer')" id="tab-cramer" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2 bg-blue-600 text-white shadow-md">
+                            <i data-lucide="grid" class="w-3.5 h-3.5"></i>
+                            Regla de Cramer
+                        </button>
+                        <button onclick="switchTab('sustitucion')" id="tab-sustitucion" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition flex items-center gap-2">
+                            <i data-lucide="replace" class="w-3.5 h-3.5"></i>
+                            Método de Sustitución
+                        </button>
+                        <button onclick="switchTab('reduccion')" id="tab-reduccion" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition flex items-center gap-2">
+                            <i data-lucide="minus-square" class="w-3.5 h-3.5"></i>
+                            Reducción / Eliminación
+                        </button>
+                        <button onclick="switchTab('geometrico')" id="tab-geometrico" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition flex items-center gap-2">
+                            <i data-lucide="compass" class="w-3.5 h-3.5"></i>
+                            Interpretación Geométrica
+                        </button>
+                    </div>
+
+                    <!-- TAB CONTENT CONTAINERS -->
+                    <div class="p-5 text-sm text-slate-300 leading-relaxed min-h-[220px]">
+                        
+                        <!-- TAB CRAMER -->
+                        <div id="content-cramer" class="tab-content space-y-4">
+                            <h3 class="text-base font-semibold text-slate-100 flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs">1</span>
+                                Resolución por Determinantes (Regla de Cramer)
+                            </h3>
+                            <div id="cramer-math-body" class="space-y-3 font-sans">
+                                <!-- MathJax injected steps -->
+                            </div>
+                        </div>
+
+                        <!-- TAB SUSTITUCION -->
+                        <div id="content-sustitucion" class="tab-content hidden space-y-4">
+                            <h3 class="text-base font-semibold text-slate-100 flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs">2</span>
+                                Resolución por el Método de Sustitución
+                            </h3>
+                            <div id="sustitucion-math-body" class="space-y-3 font-sans">
+                                <!-- MathJax injected steps -->
+                            </div>
+                        </div>
+
+                        <!-- TAB REDUCCION -->
+                        <div id="content-reduccion" class="tab-content hidden space-y-4">
+                            <h3 class="text-base font-semibold text-slate-100 flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs">3</span>
+                                Resolución por Eliminación (Suma y Resta)
+                            </h3>
+                            <div id="reduccion-math-body" class="space-y-3 font-sans">
+                                <!-- MathJax injected steps -->
+                            </div>
+                        </div>
+
+                        <!-- TAB GEOMETRICO -->
+                        <div id="content-geometrico" class="tab-content hidden space-y-4">
+                            <h3 class="text-base font-semibold text-slate-100 flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs">4</span>
+                                Análisis Geométrico del Sistema
+                            </h3>
+                            <div id="geometrico-math-body" class="space-y-3 font-sans">
+                                <!-- MathJax injected steps -->
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <div id="tutorial-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl relative">
+            <button onclick="toggleModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-blue-600/20 text-blue-400 rounded-lg">
+                    <i data-lucide="book-open" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-100">Guía de Clasificación de Sistemas 2x2</h3>
+            </div>
+            <div class="text-xs text-slate-300 space-y-3 leading-relaxed">
+                <p>Un sistema de dos ecuaciones lineales con dos incógnitas representa geométricamente dos rectas en el plano cartesiano $R^2$:</p>
+                <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 space-y-2 font-mono">
+                    <p><strong class="text-emerald-400">1. Sistema Compatible Determinado (SCD):</strong> Las rectas se cortan en un único punto $(x, y)$. Ocurre si las pendientes son distintas ($m_1 \neq m_2$), es decir, $\Delta \neq 0$.</p>
+                    <p><strong class="text-rose-400">2. Sistema Incompatible (SI):</strong> Las rectas son paralelas no coincidentes. Tienen la misma pendiente ($m_1 = m_2$) pero distinta ordenada al origen ($b_1 \neq b_2$). No existe intersección ($\Delta = 0$).</p>
+                    <p><strong class="text-amber-400">3. Sistema Compatible Indeterminado (SCI):</strong> Las rectas son exactamente la misma (coincidentes). Todos los puntos de la recta son soluciones ($\Delta = 0, \Delta_x = 0, \Delta_y = 0$).</p>
+                </div>
+            </div>
+            <div class="flex justify-end pt-2">
+                <button onclick="toggleModal(false)" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs rounded-xl transition">
+                    Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================================================
+           STATE & CONFIGURATION MANAGEMENT
+           ========================================================================== */
+        const state = {
+            a1: 2, b1: 1, c1: 7,
+            a2: -1, b2: 2, c2: 4,
+            // Viewport & Canvas Controls
+            scale: 35, // pixels per math unit
+            offsetX: 0, // canvas center x shift in pixels
+            offsetY: 0, // canvas center y shift in pixels
+            isDragging: false,
+            dragStartX: 0,
+            dragStartY: 0,
+            // Visibilities
+            showGrid: true,
+            showLabels: true,
+            showIntercepts: true,
+            showTriangle: false,
+            // Hover states
+            hoverPoint: null,
+            activeTab: 'cramer'
+        };
+
+        // Utility: Greatest Common Divisor for Fractions
+        function gcd(a, b) {
+            a = Math.abs(Math.round(a));
+            b = Math.abs(Math.round(b));
+            while (b) {
+                let t = b;
+                b = a % b;
+                a = t;
+            }
+            return a;
+        }
+
+        // Format number to fraction or neat decimal string
+        function toFractionStr(num) {
+            if (Math.abs(num) < 1e-9) return "0";
+            if (Number.isInteger(num)) return num.toString();
+            
+            // Try rationalizing small denominators
+            for (let d = 1; d <= 60; d++) {
+                let n = num * d;
+                if (Math.abs(n - Math.round(n)) < 1e-5) {
+                    let g = gcd(Math.round(n), d);
+                    let finalN = Math.round(n) / g;
+                    let finalD = d / g;
+                    if (finalD === 1) return `${finalN}`;
+                    return `\\frac{${finalN}}{${finalD}}`;
+                }
+            }
+            return num.toFixed(2);
+        }
+
+        /* ==========================================================================
+           CANVAS ENGINE & RENDERER
+           ========================================================================== */
+        const canvas = document.getElementById('math-canvas');
+        const ctx = canvas.getContext('2d');
+        const tooltip = document.getElementById('canvas-tooltip');
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            drawCanvas();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // Coordinate transforms: Math World <-> Canvas Screen
+        function worldToScreen(wx, wy) {
+            const cx = canvas.width / 2 + state.offsetX;
+            const cy = canvas.height / 2 + state.offsetY;
+            return {
+                x: cx + wx * state.scale,
+                y: cy - wy * state.scale
+            };
+        }
+
+        function screenToWorld(sx, sy) {
+            const cx = canvas.width / 2 + state.offsetX;
+            const cy = canvas.height / 2 + state.offsetY;
+            return {
+                x: (sx - cx) / state.scale,
+                y: (cy - sy) / state.scale
+            };
+        }
+
+        function drawCanvas() {
+            if (!canvas.width || !canvas.height) return;
+
+            // Clear Background
+            ctx.fillStyle = '#020617'; // slate-950
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const originScreen = worldToScreen(0, 0);
+
+            // 1. DRAW GRID & AXES
+            if (state.showGrid) {
+                drawGrid(originScreen);
+            }
+
+            drawAxes(originScreen);
+
+            // Calculate Key System Values
+            const det = state.a1 * state.b2 - state.a2 * state.b1;
+            const detX = state.c1 * state.b2 - state.c2 * state.b1;
+            const detY = state.a1 * state.c2 - state.a2 * state.c1;
+
+            // 2. DRAW TRIANGLE AREA WITH AXES IF ENABLED
+            if (state.showTriangle && Math.abs(det) > 1e-9) {
+                const ix = detX / det;
+                const iy = detY / det;
+                const p1 = worldToScreen(0, 0);
+                const p2 = worldToScreen(ix, 0);
+                const p3 = worldToScreen(ix, iy);
+
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.lineTo(p3.x, p3.y);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(16, 185, 129, 0.12)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            // 3. DRAW LINE 1 (a1*x + b1*y = c1)
+            drawLine(state.a1, state.b1, state.c1, '#3b82f6', 'L1: ' + getEqStr(state.a1, state.b1, state.c1));
+
+            // 4. DRAW LINE 2 (a2*x + b2*y = c2)
+            drawLine(state.a2, state.b2, state.c2, '#ec4899', 'L2: ' + getEqStr(state.a2, state.b2, state.c2));
+
+            // 5. DRAW KEY NOTABLE POINTS (INTERCEPTS & INTERSECTION)
+            drawNotablePoints(det, detX, detY);
+        }
+
+        // Grid Renderer with dynamic spacing
+        function drawGrid(origin) {
+            ctx.lineWidth = 1;
+
+            // Calculate grid step based on scale
+            let gridStepWorld = 1;
+            if (state.scale < 15) gridStepWorld = 5;
+            else if (state.scale < 25) gridStepWorld = 2;
+            else if (state.scale > 80) gridStepWorld = 0.5;
+
+            const gridStepPx = gridStepWorld * state.scale;
+
+            // Vertical Grid Lines
+            const startX = (origin.x % gridStepPx) - gridStepPx;
+            for (let x = startX; x < canvas.width + gridStepPx; x += gridStepPx) {
+                ctx.strokeStyle = '#1e293b'; // slate-800
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+
+            // Horizontal Grid Lines
+            const startY = (origin.y % gridStepPx) - gridStepPx;
+            for (let y = startY; y < canvas.height + gridStepPx; y += gridStepPx) {
+                ctx.strokeStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+
+        // Main Axes X and Y Renderer
+        function drawAxes(origin) {
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#475569'; // slate-600
+
+            // X Axis
+            ctx.beginPath();
+            ctx.moveTo(0, origin.y);
+            ctx.lineTo(canvas.width, origin.y);
+            ctx.stroke();
+
+            // Y Axis
+            ctx.beginPath();
+            ctx.moveTo(origin.x, 0);
+            ctx.lineTo(origin.x, canvas.height);
+            ctx.stroke();
+
+            // Axis Number Labels
+            if (state.showLabels) {
+                ctx.fillStyle = '#94a3b8'; // slate-400
+                ctx.font = '11px monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+
+                let stepWorld = state.scale < 20 ? 5 : (state.scale < 40 ? 2 : 1);
+                let stepPx = stepWorld * state.scale;
+
+                // Numbers along X axis
+                for (let x = origin.x + stepPx; x < canvas.width; x += stepPx) {
+                    const val = Math.round((x - origin.x) / state.scale);
+                    if (val !== 0) ctx.fillText(val.toString(), x, origin.y + 4);
+                }
+                for (let x = origin.x - stepPx; x > 0; x -= stepPx) {
+                    const val = Math.round((x - origin.x) / state.scale);
+                    if (val !== 0) ctx.fillText(val.toString(), x, origin.y + 4);
+                }
+
+                // Numbers along Y axis
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                for (let y = origin.y + stepPx; y < canvas.height; y += stepPx) {
+                    const val = Math.round((origin.y - y) / state.scale);
+                    if (val !== 0) ctx.fillText(val.toString(), origin.x - 6, y);
+                }
+                for (let y = origin.y - stepPx; y > 0; y -= stepPx) {
+                    const val = Math.round((origin.y - y) / state.scale);
+                    if (val !== 0) ctx.fillText(val.toString(), origin.x - 6, y);
+                }
+            }
+        }
+
+        // Draw Line Equation ax + by = c
+        function drawLine(a, b, c, color, label) {
+            if (a === 0 && b === 0) return; // Invalid line
+
+            const points = [];
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Find intersections with screen borders
+            const corners = [
+                screenToWorld(0, 0),
+                screenToWorld(w, 0),
+                screenToWorld(w, h),
+                screenToWorld(0, h)
+            ];
+
+            const minX = Math.min(corners[0].x, corners[2].x) - 2;
+            const maxX = Math.max(corners[0].x, corners[2].x) + 2;
+            const minY = Math.min(corners[0].y, corners[2].y) - 2;
+            const maxY = Math.max(corners[0].y, corners[2].y) + 2;
+
+            if (Math.abs(b) > 1e-6) {
+                // y = (c - a*x) / b
+                const y1 = (c - a * minX) / b;
+                const y2 = (c - a * maxX) / b;
+                points.push(worldToScreen(minX, y1));
+                points.push(worldToScreen(maxX, y2));
+            } else {
+                // x = c / a
+                const x = c / a;
+                points.push(worldToScreen(x, minY));
+                points.push(worldToScreen(x, maxY));
+            }
+
+            // Draw line glow and body
+            ctx.save();
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 8;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            ctx.lineTo(points[1].x, points[1].y);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // Draw Notable Points (Intersection & Axis Intercepts)
+        function drawNotablePoints(det, detX, detY) {
+            const pointsToHover = [];
+
+            // 1. INTERSECTIONS WITH AXES FOR L1
+            if (state.showIntercepts) {
+                if (Math.abs(state.a1) > 1e-6) {
+                    const xInt = state.c1 / state.a1;
+                    const p = worldToScreen(xInt, 0);
+                    drawPointMarker(p.x, p.y, '#3b82f6', 4);
+                    pointsToHover.push({ x: p.x, y: p.y, label: `Eje X L1: (${xInt.toFixed(2)}, 0)` });
+                }
+                if (Math.abs(state.b1) > 1e-6) {
+                    const yInt = state.c1 / state.b1;
+                    const p = worldToScreen(0, yInt);
+                    drawPointMarker(p.x, p.y, '#3b82f6', 4);
+                    pointsToHover.push({ x: p.x, y: p.y, label: `Eje Y L1: (0, ${yInt.toFixed(2)})` });
+                }
+
+                // INTERSECTIONS WITH AXES FOR L2
+                if (Math.abs(state.a2) > 1e-6) {
+                    const xInt = state.c2 / state.a2;
+                    const p = worldToScreen(xInt, 0);
+                    drawPointMarker(p.x, p.y, '#ec4899', 4);
+                    pointsToHover.push({ x: p.x, y: p.y, label: `Eje X L2: (${xInt.toFixed(2)}, 0)` });
+                }
+                if (Math.abs(state.b2) > 1e-6) {
+                    const yInt = state.c2 / state.b2;
+                    const p = worldToScreen(0, yInt);
+                    drawPointMarker(p.x, p.y, '#ec4899', 4);
+                    pointsToHover.push({ x: p.x, y: p.y, label: `Eje Y L2: (0, ${yInt.toFixed(2)})` });
+                }
+            }
+
+            // 2. MAIN SYSTEM INTERSECTION POINT (IF DETERMINANT != 0)
+            if (Math.abs(det) > 1e-9) {
+                const ix = detX / det;
+                const iy = detY / det;
+                const p = worldToScreen(ix, iy);
+
+                // Animated glowing pulse dot
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(16, 185, 129, 0.3)';
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#10b981'; // emerald-500
+                ctx.shadowColor = '#10b981';
+                ctx.shadowBlur = 12;
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+                ctx.restore();
+
+                pointsToHover.push({
+                    x: p.x,
+                    y: p.y,
+                    label: `Solución (x, y): (${ix.toFixed(2)}, ${iy.toFixed(2)})`
+                });
+            }
+
+            state.registeredPoints = pointsToHover;
+        }
+
+        function drawPointMarker(x, y, color, radius) {
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#0f172a';
+            ctx.stroke();
+        }
+
+        // Helper to format string equation
+        function getEqStr(a, b, c) {
+            let res = "";
+            if (a !== 0) res += `${a}x`;
+            if (b > 0) res += (res ? " + " : "") + `${b}y`;
+            else if (b < 0) res += (res ? " - " : "-") + `${Math.abs(b)}y`;
+            res += ` = ${c}`;
+            return res;
+        }
+
+        /* ==========================================================================
+           MATHEMATICAL SOLVER & DIAGNOSTICS ENGINE
+           ========================================================================== */
+        function updateMathAnalysis() {
+            const { a1, b1, c1, a2, b2, c2 } = state;
+
+            // Determinants
+            const det = a1 * b2 - a2 * b1;
+            const detX = c1 * b2 - c2 * b1;
+            const detY = a1 * c2 - a2 * c1;
+
+            // Diagnostic Classification
+            const badge = document.getElementById('diagnostic-badge');
+            const badgeTitle = document.getElementById('diagnostic-title');
+            const badgeDot = document.getElementById('diagnostic-dot');
+            const badgePing = document.getElementById('diagnostic-ping');
+
+            let systemType = "SCD"; // SCD, SI, SCI
+
+            if (Math.abs(det) > 1e-9) {
+                systemType = "SCD";
+                badgeTitle.innerText = "Sistema Compatible Determinado (Solución Única)";
+                badge.className = "px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-lg backdrop-blur flex items-center gap-2 bg-emerald-500/10 border-emerald-500/30 text-emerald-400";
+                badgeDot.className = "relative inline-flex rounded-full h-2 w-2 bg-emerald-500";
+                badgePing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
+            } else {
+                if (Math.abs(detX) < 1e-9 && Math.abs(detY) < 1e-9) {
+                    systemType = "SCI";
+                    badgeTitle.innerText = "Sistema Compatible Indeterminado (Infinitas Soluciones)";
+                    badge.className = "px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-lg backdrop-blur flex items-center gap-2 bg-amber-500/10 border-amber-500/30 text-amber-400";
+                    badgeDot.className = "relative inline-flex rounded-full h-2 w-2 bg-amber-500";
+                    badgePing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75";
+                } else {
+                    systemType = "SI";
+                    badgeTitle.innerText = "Sistema Incompatible (Sin Solución)";
+                    badge.className = "px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-lg backdrop-blur flex items-center gap-2 bg-rose-500/10 border-rose-500/30 text-rose-400";
+                    badgeDot.className = "relative inline-flex rounded-full h-2 w-2 bg-rose-500";
+                    badgePing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75";
+                }
+            }
+
+            // Update UI Key Metrics
+            const solEl = document.getElementById('val-solution');
+            const solExactEl = document.getElementById('val-solution-exact');
+            const detMainEl = document.getElementById('val-det-main');
+            const detSubEl = document.getElementById('val-det-sub');
+            const slopesEl = document.getElementById('val-slopes');
+            const angleEl = document.getElementById('val-angle');
+            const angleTypeEl = document.getElementById('val-angle-type');
+
+            if (systemType === "SCD") {
+                const x = detX / det;
+                const y = detY / det;
+                solEl.innerHTML = `$(x, y) = (${x.toFixed(2)}, ${y.toFixed(2)})$`;
+                solExactEl.innerHTML = `Exacto: $(${toFractionStr(x)}, ${toFractionStr(y)})$`;
+            } else if (systemType === "SCI") {
+                solEl.innerHTML = `<span class="text-amber-400">$\infty$ Soluciones</span>`;
+                solExactEl.innerHTML = `Rectas Coincidentes`;
+            } else {
+                solEl.innerHTML = `<span class="text-rose-400">Sin Solución</span>`;
+                solExactEl.innerHTML = `Rectas Paralelas`;
+            }
+
+            detMainEl.innerHTML = `$\\Delta = ${det.toFixed(2)}$`;
+            detSubEl.innerHTML = `$\\Delta_x = ${detX.toFixed(2)}, \\quad \\Delta_y = ${detY.toFixed(2)}$`;
+
+            // Slopes m1, m2
+            const m1 = Math.abs(b1) > 1e-9 ? -a1 / b1 : Infinity;
+            const m2 = Math.abs(b2) > 1e-9 ? -a2 / b2 : Infinity;
+
+            const m1Str = isFinite(m1) ? m1.toFixed(2) : "\\text{Vertical}";
+            const m2Str = isFinite(m2) ? m2.toFixed(2) : "\\text{Vertical}";
+            slopesEl.innerHTML = `$m_1 = ${m1Str}$ <br> $m_2 = ${m2Str}$`;
+
+            // Angle between lines
+            if (isFinite(m1) && isFinite(m2)) {
+                let tanTheta = Math.abs((m2 - m1) / (1 + m1 * m2));
+                let angleRad = Math.atan(tanTheta);
+                let angleDeg = (angleRad * 180) / Math.PI;
+
+                if (Math.abs(1 + m1 * m2) < 1e-5) {
+                    angleDeg = 90.0;
+                }
+
+                angleEl.innerHTML = `$\\theta = ${angleDeg.toFixed(1)}^\\circ$`;
+                if (Math.abs(angleDeg - 90) < 1e-2) angleTypeEl.innerText = "Rectas Perpendiculares";
+                else if (Math.abs(angleDeg) < 1e-2) angleTypeEl.innerText = "Rectas Paralelas";
+                else angleTypeEl.innerText = "Rectas Secantes";
+            } else {
+                angleEl.innerHTML = `$\\theta = \\text{N/A}$`;
+                angleTypeEl.innerText = "Líneas verticales";
+            }
+
+            generateStepByStepMath(systemType, det, detX, detY);
+
+            // Trigger MathJax re-render for clean math formula display
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                MathJax.typesetPromise();
+            }
+        }
+
+        function generateStepByStepMath(systemType, det, detX, detY) {
+            const { a1, b1, c1, a2, b2, c2 } = state;
+
+            // --- TAB 1: CRAMER ---
+            let cramerHTML = `
+                <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2">
+                    <p class="text-xs text-slate-400">1. Formamos las matrices y calculamos los determinantes principales:</p>
+                    <div class="overflow-x-auto text-xs py-1">
+                        $$\\Delta = \\begin{vmatrix} a_1 & b_1 \\\\ a_2 & b_2 \\end{vmatrix} = \\begin{vmatrix} ${a1} & ${b1} \\\\ ${a2} & ${b2} \\end{vmatrix} = (${a1})(${b2}) - (${a2})(${b1}) = ${det}$$
+                    </div>
+                </div>
+            `;
+
+            if (systemType === "SCD") {
+                const x = detX / det;
+                const y = detY / det;
+                cramerHTML += `
+                    <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2">
+                        <p class="text-xs text-slate-400">2. Calculamos los determinantes de las incógnitas $\\Delta_x$ y $\\Delta_y$:</p>
+                        <div class="overflow-x-auto text-xs py-1">
+                            $$\\Delta_x = \\begin{vmatrix} ${c1} & ${b1} \\\\ ${c2} & ${b2} \\end{vmatrix} = (${c1})(${b2}) - (${c2})(${b1}) = ${detX}$$
+                            $$\\Delta_y = \\begin{vmatrix} ${a1} & ${c1} \\\\ ${a2} & ${c2} \\end{vmatrix} = (${a1})(${c2}) - (${a2})(${c1}) = ${detY}$$
+                        </div>
+                    </div>
+                    <div class="p-3 bg-emerald-950/30 rounded-xl border border-emerald-500/30 space-y-2">
+                        <p class="text-xs font-semibold text-emerald-400">3. Solución del Sistema:</p>
+                        <div class="overflow-x-auto text-xs py-1 text-emerald-200">
+                            $$x = \\frac{\\Delta_x}{\\Delta} = \\frac{${detX}}{${det}} = ${toFractionStr(x)} = ${x.toFixed(2)}$$
+                            $$y = \\frac{\\Delta_y}{\\Delta} = \\frac{${detY}}{${det}} = ${toFractionStr(y)} = ${y.toFixed(2)}$$
+                        </div>
+                    </div>
+                `;
+            } else if (systemType === "SI") {
+                cramerHTML += `
+                    <div class="p-3 bg-rose-950/30 rounded-xl border border-rose-500/30 text-xs text-rose-300">
+                        <p class="font-semibold mb-1">Conclusión por Cramer:</p>
+                        <p>Como $\\Delta = 0$ y al menos uno de los determinantes de las incógnitas es diferente de cero ($\\Delta_x = ${detX}, \\Delta_y = ${detY}$), la división por cero no está definida. <strong>El sistema NO tiene solución (Incompatible).</strong></p>
+                    </div>
+                `;
+            } else {
+                cramerHTML += `
+                    <div class="p-3 bg-amber-950/30 rounded-xl border border-amber-500/30 text-xs text-amber-300">
+                        <p class="font-semibold mb-1">Conclusión por Cramer:</p>
+                        <p>Como $\\Delta = 0$, $\\Delta_x = 0$ y $\\Delta_y = 0$, el sistema presenta infinitas soluciones. <strong>Es un Sistema Compatible Indeterminado.</strong></p>
+                    </div>
+                `;
+            }
+            document.getElementById('cramer-math-body').innerHTML = cramerHTML;
+
+            // --- TAB 2: SUSTITUCION ---
+            let sustHTML = "";
+            if (Math.abs(b1) > 1e-9) {
+                sustHTML = `
+                    <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2 text-xs">
+                        <p class="text-slate-400">1. Despejamos la incógnita $y$ de la primera ecuación ($L_1$):</p>
+                        <div class="overflow-x-auto">
+                            $$${a1}x + ${b1}y = ${c1} \\implies y = \\frac{${c1} - (${a1}x)}{${b1}}$$
+                        </div>
+                    </div>
+                    <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2 text-xs">
+                        <p class="text-slate-400">2. Sustituimos esta expresión de $y$ en la segunda ecuación ($L_2$):</p>
+                        <div class="overflow-x-auto">
+                            $$${a2}x + ${b2}\\left(\\frac{${c1} - ${a1}x}{${b1}}\\right) = ${c2}$$
+                        </div>
+                    </div>
+                `;
+                if (systemType === "SCD") {
+                    const x = detX / det;
+                    const y = detY / det;
+                    sustHTML += `
+                        <div class="p-3 bg-emerald-950/30 rounded-xl border border-emerald-500/30 space-y-2 text-xs text-emerald-200">
+                            <p class="font-semibold text-emerald-400">3. Resolviendo para $x$ y luego para $y$:</p>
+                            <p>Multiplicando por $${b1}$ y simplificando términos semejantes obtenemos $x = ${toFractionStr(x)}$.</p>
+                            <p>Sustituyendo de vuelta: $y = ${toFractionStr(y)}$.</p>
+                        </div>
+                    `;
+                }
+            } else {
+                sustHTML = `<div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 text-xs text-slate-400">Despeje directo inmediato al ser un coeficiente igual a 0.</div>`;
+            }
+            document.getElementById('sustitucion-math-body').innerHTML = sustHTML;
+
+            // --- TAB 3: REDUCCION ---
+            let redHTML = `
+                <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2 text-xs">
+                    <p class="text-slate-400">1. Multiplicamos las ecuaciones por factores para igualar coeficientes de $y$:</p>
+                    <p>Multiplicar $L_1$ por $(${b2})$ y $L_2$ por $(${ -b1 })$:</p>
+                    <div class="overflow-x-auto font-mono text-slate-200 py-1">
+                        $$ (${a1 * b2})x + (${b1 * b2})y = ${c1 * b2} $$
+                        $$ (${-a2 * b1})x + (${-b2 * b1})y = ${-c2 * b1} $$
+                    </div>
+                </div>
+                <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2 text-xs">
+                    <p class="text-slate-400">2. Sumamos ambas ecuaciones término a término:</p>
+                    <div class="overflow-x-auto font-mono text-slate-200 py-1">
+                        $$ (${a1 * b2 - a2 * b1})x + 0y = ${c1 * b2 - c2 * b1} \\implies (${det})x = ${detX} $$
+                    </div>
+                </div>
+            `;
+            document.getElementById('reduccion-math-body').innerHTML = redHTML;
+
+            // --- TAB 4: GEOMETRICO ---
+            let geoHTML = `
+                <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2 text-xs">
+                    <p class="text-slate-300">
+                        Cada ecuación representa una recta en el plano $R^2$. 
+                        La primera recta $L_1$ tiene pendiente $m_1 = ${Math.abs(b1) > 1e-9 ? (-a1/b1).toFixed(2) : '\\infty'}$.
+                        La segunda recta $L_2$ tiene pendiente $m_2 = ${Math.abs(b2) > 1e-9 ? (-a2/b2).toFixed(2) : '\\infty'}$.
+                    </p>
+                </div>
+            `;
+            if (systemType === "SCD") {
+                geoHTML += `
+                    <div class="p-3 bg-emerald-950/30 rounded-xl border border-emerald-500/30 text-xs text-emerald-300">
+                        <p class="font-semibold mb-1">Interpretación de Intersección:</p>
+                        <p>Dado que $m_1 \\neq m_2$, las dos rectas no son paralelas y se cortan oblicuamente en un único punto vectorial de coordenadas $P = (${(detX/det).toFixed(2)}, ${(detY/det).toFixed(2)})$.</p>
+                    </div>
+                `;
+            } else if (systemType === "SI") {
+                geoHTML += `
+                    <div class="p-3 bg-rose-950/30 rounded-xl border border-rose-500/30 text-xs text-rose-300">
+                        <p class="font-semibold mb-1">Interpretación de Paralelismo:</p>
+                        <p>Las dos rectas poseen la misma inclinación ($m_1 = m_2$) pero distintas ordenadas al origen. Corren paralelas en el plano y jamás se cruzarán.</p>
+                    </div>
+                `;
+            } else {
+                geoHTML += `
+                    <div class="p-3 bg-amber-950/30 rounded-xl border border-amber-500/30 text-xs text-amber-300">
+                        <p class="font-semibold mb-1">Interpretación de Coincidencia:</p>
+                        <p>Ambas ecuaciones representan exactamente la misma recta expresada en diferente escala. Existen infinitos puntos compartidos.</p>
+                    </div>
+                `;
+            }
+            document.getElementById('geometrico-math-body').innerHTML = geoHTML;
+        }
+
+        /* ==========================================================================
+           INTERACTION & UI EVENT LISTENERS
+           ========================================================================== */
+        function syncInputsAndSliders() {
+            const keys = ['a1', 'b1', 'c1', 'a2', 'b2', 'c2'];
+            keys.forEach(k => {
+                const num = document.getElementById(`num-${k}`);
+                const range = document.getElementById(`range-${k}`);
+
+                num.addEventListener('input', (e) => {
+                    let v = parseFloat(e.target.value) || 0;
+                    state[k] = v;
+                    range.value = v;
+                    onParamsChanged();
+                });
+
+                range.addEventListener('input', (e) => {
+                    let v = parseFloat(e.target.value) || 0;
+                    state[k] = v;
+                    num.value = v;
+                    onParamsChanged();
+                });
+            });
+
+            // Visibility checkboxes
+            document.getElementById('chk-grid').addEventListener('change', (e) => {
+                state.showGrid = e.target.checked;
+                drawCanvas();
+            });
+            document.getElementById('chk-labels').addEventListener('change', (e) => {
+                state.showLabels = e.target.checked;
+                drawCanvas();
+            });
+            document.getElementById('chk-intercepts').addEventListener('change', (e) => {
+                state.showIntercepts = e.target.checked;
+                drawCanvas();
+            });
+            document.getElementById('chk-triangle').addEventListener('change', (e) => {
+                state.showTriangle = e.target.checked;
+                drawCanvas();
+            });
+
+            // View Control Buttons
+            document.getElementById('btn-zoom-in').addEventListener('click', () => {
+                state.scale *= 1.25;
+                drawCanvas();
+            });
+            document.getElementById('btn-zoom-out').addEventListener('click', () => {
+                state.scale /= 1.25;
+                drawCanvas();
+            });
+            document.getElementById('btn-reset-view').addEventListener('click', () => {
+                state.scale = 35;
+                state.offsetX = 0;
+                state.offsetY = 0;
+                drawCanvas();
+            });
+            document.getElementById('btn-focus-intersect').addEventListener('click', () => {
+                const det = state.a1 * state.b2 - state.a2 * state.b1;
+                if (Math.abs(det) > 1e-9) {
+                    const ix = (state.c1 * state.b2 - state.c2 * state.b1) / det;
+                    const iy = (state.a1 * state.c2 - state.a2 * state.c1) / det;
+                    state.offsetX = -ix * state.scale;
+                    state.offsetY = iy * state.scale;
+                    drawCanvas();
+                }
+            });
+        }
+
+        function onParamsChanged() {
+            // Update live previews text
+            document.getElementById('eq1-preview').innerText = getEqStr(state.a1, state.b1, state.c1);
+            document.getElementById('eq2-preview').innerText = getEqStr(state.a2, state.b2, state.c2);
+
+            drawCanvas();
+            updateMathAnalysis();
+        }
+
+        // Preset Loader
+        function loadPreset(type) {
+            if (type === 'determinado') {
+                setValues(2, 1, 7, -1, 2, 4);
+            } else if (type === 'incompatible') {
+                setValues(2, -1, 4, 2, -1, -2);
+            } else if (type === 'indeterminado') {
+                setValues(1, 2, 3, 2, 4, 6);
+            } else if (type === 'perpendicular') {
+                setValues(3, -2, 6, 2, 3, 12);
+            }
+        }
+
+        function setValues(a1, b1, c1, a2, b2, c2) {
+            state.a1 = a1; state.b1 = b1; state.c1 = c1;
+            state.a2 = a2; state.b2 = b2; state.c2 = c2;
+
+            ['a1', 'b1', 'c1', 'a2', 'b2', 'c2'].forEach(k => {
+                document.getElementById(`num-${k}`).value = state[k];
+                document.getElementById(`range-${k}`).value = state[k];
+            });
+
+            onParamsChanged();
+        }
+
+        // Tab Switching Function
+        function switchTab(tabId) {
+            state.activeTab = tabId;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition flex items-center gap-2";
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            const activeContent = document.getElementById(`content-${tabId}`);
+
+            if (activeBtn && activeContent) {
+                activeBtn.className = "tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2 bg-blue-600 text-white shadow-md";
+                activeContent.classList.remove('hidden');
+            }
+        }
+
+        // Modal Toggle
+        function toggleModal(show) {
+            const modal = document.getElementById('tutorial-modal');
+            if (show) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
+        }
+
+        /* ==========================================================================
+           CANVAS PAN, ZOOM & TOOLTIP EVENTS
+           ========================================================================== */
+        function setupCanvasMouseEvents() {
+            canvas.addEventListener('mousedown', (e) => {
+                state.isDragging = true;
+                state.dragStartX = e.clientX - state.offsetX;
+                state.dragStartY = e.clientY - state.offsetY;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (state.isDragging) {
+                    state.offsetX = e.clientX - state.dragStartX;
+                    state.offsetY = e.clientY - state.dragStartY;
+                    drawCanvas();
+                } else {
+                    // Check for hover near notable points
+                    const rect = canvas.getBoundingClientRect();
+                    const mouseX = e.clientX - rect.left;
+                    const mouseY = e.clientY - rect.top;
+
+                    let hovered = null;
+                    if (state.registeredPoints) {
+                        for (let pt of state.registeredPoints) {
+                            let dist = Math.hypot(pt.x - mouseX, pt.y - mouseY);
+                            if (dist < 10) {
+                                hovered = pt;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (hovered) {
+                        tooltip.style.display = 'block';
+                        tooltip.style.left = `${mouseX + 12}px`;
+                        tooltip.style.top = `${mouseY - 25}px`;
+                        tooltip.innerText = hovered.label;
+                    } else {
+                        tooltip.style.display = 'none';
+                    }
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                state.isDragging = false;
+            });
+
+            // Wheel zoom centered on cursor
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+                
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                // Math location under mouse before zoom
+                const worldBefore = screenToWorld(mouseX, mouseY);
+
+                state.scale *= zoomFactor;
+
+                // Adjust offset to keep mouse world point invariant
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 2;
+
+                state.offsetX = mouseX - cx - worldBefore.x * state.scale;
+                state.offsetY = mouseY - cy + worldBefore.y * state.scale;
+
+                drawCanvas();
+            }, { passive: false });
+        }
+
+        /* ==========================================================================
+           INITIALIZATION ON LOAD
+           ========================================================================== */
+        window.onload = function() {
+            lucide.createIcons();
+            syncInputsAndSliders();
+            setupCanvasMouseEvents();
+            resizeCanvas();
+            onParamsChanged();
+        };
+    </script>
+</body>
+</html>
